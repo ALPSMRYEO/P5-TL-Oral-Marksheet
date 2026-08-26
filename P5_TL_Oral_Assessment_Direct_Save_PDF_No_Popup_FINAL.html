@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alexandra வாய்மொழி மதிப்பீடு – தொடக்கநிலை 5 (2026)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- html2pdf.js: generate a real PDF without opening the browser print page -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+
+        @media print {
+            body { 
+                background-color: white; 
+                font-size: 11pt;
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important;
+            }
+            .no-print { display: none !important; }
+            .print-only { display: flex !important; }
+            
+            .print-container {
+                border: 2px solid #3b82f6;
+                border-radius: 16px;
+                padding: 16px; 
+                margin: 0 auto;
+                box-shadow: none;
+                
+                min-height: 255mm; 
+                max-height: 270mm;
+                width: 190mm;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                overflow: visible !important;
+                page-break-inside: avoid;
+            }
+
+            .print-container * {
+                font-size: 0.92em; 
+            }
+        }
+        
+        .print-only { display: none; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fefce8;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fde047;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #facc15;
+        }
+    </style>
+</head>
+<body class="bg-yellow-50 text-slate-900 font-sans min-h-screen pb-24 text-base">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const rubricsData = {
+            // Standard Tamil Language (50 Marks)
+            standard: {
+                readingPron: {
+                    title: "உச்சரிப்பும் சொல்லழுத்தமும் (10 மதிப்பெண்கள்)",
+                    max: 10,
+                    items: [
+                        { level: 1, scores: [9, 10], label: "தெளிவான உச்சரிப்பு", desc: "தெளிவாகவும் சரளமாகவும் அமைந்த உச்சரிப்பு.", feedback: "உனது உச்சரிப்பு முழுவதும் மிகத் துல்லியமாகவும் தெளிவுடனும் இருந்தது!" },
+                        { level: 2, scores: [7, 8], label: "சில பிழைகளுடன் கூடிய தெளிவான உச்சரிப்பு", desc: "சில பிழைகளை மட்டும் கொண்ட தெளிவான உச்சரிப்பு.", feedback: "உனது உச்சரிப்பு பொதுவாகத் துல்லியமாகவும் தெளிவாகவும் இருந்தது. சில குறிப்பிட்ட சொற்களின் உச்சரிப்பில் மட்டும் கவனம் செலுத்து." },
+                        { level: 3, scores: [5, 6], label: "பொதுவாகத் தெளிவான உச்சரிப்பு", desc: "பல பிழைகளைக் கொண்ட பொதுவாகத் தெளிவான உச்சரிப்பு.", feedback: "உனது வாசிப்பு ஓரளவு தெளிவாக இருந்தது, ஆனால் சில பிழைகள் இருந்தன. தெரியாத சொற்களைத் தொடர்ந்து பயிற்சி செய்!" },
+                        { level: 4, scores: [3, 4], label: "பெரும் பிழைகளுடன் கூடிய உச்சரிப்பு", desc: "விளங்கிக்கொள்வதில் சிரமத்தை ஏற்படுத்தும் அளவுக்குப் பெரும் பிழைகளை அதிகம் கொண்டுள்ள உச்சரிப்பு.", feedback: "உனது உச்சரிப்பில் சில தவறுகள் உள்ளதால் சில பகுதிகளைப் புரிந்துகொள்வது கடினமாக உள்ளது. தெளிவை அதிகரிக்க வாய்விட்டு வாசித்துப் பழகவும்." },
+                        { level: 5, scores: [1, 2], label: "முற்றிலும் தவறான உச்சரிப்பு", desc: "முற்றிலும் தவறாகப் படிக்கப்பட்ட, தெளிவற்ற உச்சரிப்பு.", feedback: "இன்று வாசிப்பில் சிரமங்கள் இருந்தன. வழிகாட்டுதலுடன் வாய்விட்டு வாசித்து முன்னேறப் பழகவும்!" }
+                    ]
+                },
+                readingFluency: {
+                    title: "சரளமும் ஓசை நயமும் (10 மதிப்பெண்கள்)",
+                    max: 10,
+                    items: [
+                        { level: 1, scores: [9, 10], label: "மிகச் சரளமாக வாசித்தல்", desc: "மிகச் சரளமாக வாசித்தல்; பொருத்தமான இடங்களில் நிறுத்தியும், தயக்கமின்றியும், ஏற்ற இறக்கத்துடனும் வாசித்தல்.", feedback: "எந்தத் தயக்கமும் இன்றி மிகச் சரளமாக வாசித்தாய்! சிறந்த வேகம், நயம் மற்றும் உணர்வு வெளிப்பாடு." },
+                        { level: 2, scores: [7, 8], label: "சரளமாக வாசித்தல்", desc: "சரளமாக வாசித்தல்; பொதுவாகப் பொருத்தமான இடங்களில் நிறுத்தியும், அதிகத் தயக்கமில்லாமலும், ஏற்ற இறக்கத்துடனும் வாசித்தல்.", feedback: "மிகக் குறைந்த தயக்கங்களுடன் பொதுவாகச் சரளமாக வாசித்தாய். குரல் ஏற்ற இறக்கமும் வேகமும் இயல்பாக இருந்தன." },
+                        { level: 3, scores: [5, 6], label: "பொதுவாகச் சரளமாக வாசித்தல்", desc: "பொதுவாகச் சரளமாக வாசித்தல்; பொதுவாகப் பொருத்தமான இடங்களில் நிறுத்தி வாசித்தல்; சில இடங்களில் தயக்கம் காட்டுதல்; ஓரளவு ஏற்ற இறக்கத்துடன் வாசித்தல்.", feedback: "உனது வாசிப்பு ஓரளவு சரளமாக இருந்தது. சில இடங்களில் தயக்கங்கள் இருந்தாலும் நல்ல வேகத்தைப் பராமரித்தாய். தொடர்ந்து முயற்சி செய்!" },
+                        { level: 4, scores: [3, 4], label: "ஓரளவு சரளமற்ற வாசிப்பு", desc: "ஓரளவு சரளமற்ற வாசிப்பு; பொருத்தமற்ற இடங்களில் நிறுத்தி வாசித்தல்; சில இடங்களில் மட்டுமே ஏற்ற இறக்கத்துடன் வாசித்தல்.", feedback: "வாசிப்பு மிகவும் சரளமாக இல்லை, இயல்பற்ற நிறுத்தங்கள் இருந்தன. சொற்களைச் சேர்த்து வாசிக்கப் பழகவும்." },
+                        { level: 5, scores: [1, 2], label: "தடுமாற்றத்துடன் வாசித்தல்", desc: "தடுமாற்றத்துடன் வாசித்தல்; பல சொற்களை வாசிக்காமல் விட்டுவிடுதல்; பொருத்தமற்ற இடங்களில் நிறுத்தி வாசித்தல்; ஏற்ற இறக்கமின்றி வாசித்தல்.", feedback: "வாசிப்பில் தடுமாற்றமும் பல சொற்கள் விடுபடுதலும் இருந்தன. நிதானமாக எளிய வாக்கியங்களைச் சிறுகச் சிறுக வாசித்துப் பழகவும்." }
+                    ]
+                },
+                convResponse: {
+                    title: "கருத்துருப்பும் கருத்துளர்ச்சியும் (15 மதிப்பெண்கள்)",
+                    max: 15,
+                    items: [
+                        { level: 1, scores: [13, 14, 15], label: "மிகக் குறைந்த அளவு தூண்டுதல்", desc: "மிகக் குறைந்த அளவு தூண்டுதல் தேவைப்படும் நிலை; போதுமான அளவு பொருத்தமான கருத்துகளைக் கூறுதல்; கருத்து வளர்ச்சி உள்ளது; தொடர்ச்சியாக ஈடுபடுதல்.", feedback: "மிகச் சிறந்த தன்னம்பிக்கையை வெளிப்படுத்தினாய்! உனது கருத்துகளை விரிவாகக் கூறி உரையாடலில் சுறுசுறுப்பாகப் பங்கேற்றாய்." },
+                        { level: 2, scores: [10, 11, 12], label: "சில வேளைகளில் தூண்டுதல்", desc: "சில வேளைகளில் தூண்டுதல் தேவைப்படும் நிலை; போதுமான அளவு பொருத்தமான கருத்துகளைக் கூறுதல்; ஓரளவு கருத்து வளர்ச்சி உள்ளது; பெரும்பாலும் ஈடுபடுதல்.", feedback: "நல்ல செயல்திறன்! குறைந்த தூண்டுதலுடன் உனது எண்ணங்களை அழகாக வெளிப்படுத்தி விரிவுபடுத்தினாய்." },
+                        { level: 3, scores: [7, 8, 9], label: "அடிக்கடி தூண்டுதல்", desc: "அடிக்கடி தூண்டுதல் தேவைப்படும் நிலை; ஓரளவு பொருத்தமான கருத்துகளைக் கூறுதல்; ஓரளவு கருத்து வளர்ச்சி உள்ளது; சில வேளைகளில் ஈடுபடுதல்.", feedback: "வழிகாட்டும்போது நன்றாகப் பதிலளித்தாய். தூண்டுதலுக்குக் காத்திராமல் நீயாகவே கருத்துகளைப் பகிர முயற்சி செய்!" },
+                        { level: 4, scores: [4, 5, 6], label: "தொடர்ச்சியாகத் தூண்டுதல் (குறைந்த பங்கேற்பு)", desc: "தொடர்ச்சியாகத் தூண்டுதல் தேவைப்படும் நிலை; உரையாடலிலும் கருத்துப் பரிமாற்றத்திலும் பெரும்பாலும் ஈடுபட இயலாமை.", feedback: "தொடர்ச்சியான கேள்விகள் தேவைப்பட்டன, கருத்துகளை விரிவாக்குவதில் சிரமம் இருந்தது. தினசரி எண்ணங்களைத் தைரியமாகப் பகிரப் பழகவும்!" },
+                        { level: 5, scores: [1, 2, 3], label: "தொடர்ச்சியாகத் தூண்டுதல் (ஈடுபட இயலாமை)", desc: "தொடர்ச்சியாகத் தூண்டுதல் தேவைப்படும் நிலை; உரையாடலிலும் கருத்துப் பரிமாற்றத்திலும் ஈடுபட இயலாமை.", feedback: "இன்று சற்று பதற்றமாகக் காணப்பட்டாய். கவலைப்பட வேண்டாம்—தினசரி உரையாடல்கள் மூலம் உனது தன்னம்பிக்கையை வளர்ப்போம்." }
+                    ]
+                },
+                convLanguage: {
+                    title: "மொழியும் சரளமும் (15 மதிப்பெண்கள்)",
+                    max: 15,
+                    items: [
+                        { level: 1, scores: [13, 14, 15], label: "பொருத்தமான சொல்லாட்சி", desc: "பொருத்தமான சொல்லாட்சியைப் பயன்படுத்துதல்; கருத்துகளைத் தெளிவாகவும் சரளமாகவும் எடுத்துரைத்தல்.", feedback: "பொருத்தமான சொற்களைப் பயன்படுத்தி மிகச் சரளமாகவும் தெளிவாகவும் பதிலளித்தாய்." },
+                        { level: 2, scores: [10, 11, 12], label: "பெரும்பாலும் பொருத்தமான சொல்லாட்சி", desc: "பெரும்பாலும் பொருத்தமான சொல்லாட்சியைப் பயன்படுத்துதல்; பொதுவாகக் கருத்துகளைத் தெளிவாகவும் சரளமாகவும் எடுத்துரைத்தல்.", feedback: "நல்ல சொற்களஞ்சியத்தைப் பயன்படுத்தினாய்; பெரும்பாலான நேரங்களில் தெளிவாகவும் சுலபமாகவும் பேசினாய்." },
+                        { level: 3, scores: [7, 8, 9], label: "அடிப்படைச் சொற்கள்", desc: "அடிப்படைச் சொற்களைப் பயன்படுத்துதல் (சில வேளைகளில் பொருத்தமற்றதாக இருத்தல்); பொதுவாகக் கருத்துகளை எளிய வாக்கியங்களில் எடுத்துரைத்தல்.", feedback: "அடிப்படைச் சொற்களைக் கொண்டு எளிய வாக்கியங்களில் கருத்துகளைக் கூறினாய். அதிகச் சொற்களைக் கற்பது உரையாடலை மேலும் செழுமைப்படுத்தும்!" },
+                        { level: 4, scores: [4, 5, 6], label: "தயக்கத்துடன் கூடிய பேச்சு", desc: "அடிப்படைச் சொற்களைப் பயன்படுத்துதல் (பல வேளைகளில் பொருத்தமற்றதாக இருத்தல்); கருத்துகளைத் தெளிவாக எடுத்துரைக்க இயலாமை; தயக்கம் காட்டுதல்.", feedback: "சரியான சொற்களைத் தேர்ந்தெடுப்பதில் தயக்கமும் சிரமமும் இருந்தது. தினமும் தமிழில் பேசிப் பழகுவது சரளத்தன்மையைக் கூட்டும்." },
+                        { level: 5, scores: [1, 2, 3], label: "பொருத்தமற்ற சொற்கள்", desc: "பெரும்பாலும் பொருத்தமற்ற சொற்களைப் பயன்படுத்துதல்; கருத்துகளைத் தெளிவாக எடுத்துரைக்க இயலாமை; பொருத்தமற்ற இடங்களில் நிறுத்துதல்.", feedback: "சொற்களஞ்சியம் குறைவாக இருந்ததால் கருத்துகளை வெளிப்படுத்துவது கடினமாக இருந்தது. தொடர்ந்து கேட்டுக் வாசித்துப் பழகினால் நிச்சயம் முன்னேறலாம்!" }
+                    ]
+                }
+            },
+            // Foundation Tamil Language
+            foundation: {
+                readingPron: {
+                    title: "உச்சரிப்பு (15 மதிப்பெண்கள்)",
+                    max: 15,
+                    items: [
+                        { level: 1, scores: [13, 14, 15], label: "தெளிவான உச்சரிப்பு", desc: "தெளிவான உச்சரிப்பு.", feedback: "உனது உச்சரிப்பு முழுவதும் மிகத் துல்லியமாகவும் தெளிவுடனும் இருந்தது!" },
+                        { level: 2, scores: [10, 11, 12], label: "சில பிழைகளுடன் கூடிய தெளிவான உச்சரிப்பு", desc: "சில பிழைகளுடன் கூடிய தெளிவான உச்சரிப்பு.", feedback: "உனது உச்சரிப்பு பொதுவாகத் துல்லியமாகவும் தெளிவாகவும் இருந்தது. சில குறிப்பிட்ட சொற்களின் உச்சரிப்பில் மட்டும் கவனம் செலுத்து." },
+                        { level: 3, scores: [7, 8, 9], label: "பொதுவாகத் தெளிவான உச்சரிப்பு", desc: "பல பிழைகளுடன் கூடிய ஓரளவு தெளிவான உச்சரிப்பு.", feedback: "உனது வாசிப்பு ஓரளவு தெளிவாக இருந்தது, ஆனால் சில பிழைகள் இருந்தன. தொடர்ந்து பயிற்சி செய்!" },
+                        { level: 4, scores: [4, 5, 6], label: "பெரும் பிழைகளுடன் கூடிய உச்சரிப்பு", desc: "பெரும் பிழைகளுடன் கூடிய உச்சரிப்பு.", feedback: "சில இடங்களில் உச்சரிப்பில் துல்லியமின்மை உள்ளது. தெளிவை மேம்படுத்த தொடர்ந்து வாய்விட்டு வாசித்துப் பழகவும்." },
+                        { level: 5, scores: [1, 2, 3], label: "முற்றிலும் தவறான உச்சரிப்பு", desc: "முற்றிலும் தவறான உச்சரிப்பு.", feedback: "இன்று வாசிப்பில் சிரமங்கள் இருந்தன. வழிகாட்டுதலுடன் சேர்ந்து வாசித்து முன்னேறப் பழகவும்!" }
+                    ]
+                },
+                readingFluency: {
+                    title: "சரளமும் ஓசை நயமும் (15 மதிப்பெண்கள்)",
+                    max: 15,
+                    items: [
+                        { level: 1, scores: [13, 14, 15], label: "மிகச் சரளமாக வாசித்தல்", desc: "மிகச் சரளமாக, ஏற்ற இறக்கத்துடன் வாசித்தல்.", feedback: "பொருத்தமான வேகத்தோடும் இயல்பான உணர்வோடும் சரளமாக வாசித்தாய். மிக நன்று!" },
+                        { level: 2, scores: [10, 11, 12], label: "சரளமாக வாசித்தல்", desc: "பொதுவாகச் சரளமாக, அதிகத் தயக்கமின்றி வாசித்தல்.", feedback: "சரியான நிறுத்தங்கள் மற்றும் இயல்பான குரல் ஏற்ற இறக்கத்துடன் உனது வாசிப்பு பொதுவாகச் சரளமாக இருந்தது." },
+                        { level: 3, scores: [7, 8, 9], label: "பொதுவாகச் சரளமாக வாசித்தல்", desc: "ஓரளவு சரளமாக, சில இடங்களில் தயக்கத்துடன் வாசித்தல்.", feedback: "வாசிப்பு ஓரளவு சரளமாக இருந்தது. தயக்கங்களின்றிச் சரளமாக வாசிக்கத் தொடர்ந்து முயல்!" },
+                        { level: 4, scores: [4, 5, 6], label: "தடுமாற்றத்துடன் வாசித்தல்", desc: "தடுமாற்றத்துடன், பொருத்தமற்ற நிறுத்தங்களுடன் வாசித்தல்.", feedback: "வாசிப்பு மிகவும் சரளமாக இல்லை. அடுத்த முறை சிறிய சொற்றொடர்களை ஒன்றாகச் சேர்த்து வாசிக்க முயலுங்கள்." },
+                        { level: 5, scores: [1, 2, 3], label: "பெரும் தடுமாற்றத்துடன் வாசித்தல்", desc: "பெரும் தடுமாற்றத்துடன், பல சொற்களை விடுத்து வாசித்தல்.", feedback: "வாசிப்பில் தடுமாற்றமும் வாசிக்கப்படாத பல சொற்களும் இருந்தன. எளிய வாக்கியங்களைக் கவனமாக வாசிக்கவும்." }
+                    ]
+                },
+                convResponse: {
+                    title: "கருத்து வளர்ச்சி (20 மதிப்பெண்கள்)",
+                    max: 20,
+                    items: [
+                        { level: 1, scores: [17, 18, 19, 20], label: "பொருத்தமான கருத்துகள் (செம்மையாகக் கூறுதல்)", desc: "பொருத்தமான கருத்துகளைச் செம்மையாகக் கூறுதல்.", feedback: "சிறந்த தன்னம்பிக்கையை வெளிப்படுத்தினாய்! கருத்துகளைத் தெளிவாக விவரித்து உரையாடலைச் சிறப்பாகத் தொடர்ந்தாய்." },
+                        { level: 2, scores: [13, 14, 15, 16], label: "போதுமான பொருத்தமான கருத்துகள்", desc: "போதுமான பொருத்தமான கருத்துகளைக் கூறுதல்.", feedback: "நல்ல உரையாடல்! குறைந்த தூண்டுதலுடன் முக்கியக் கருத்துகளைத் தெளிவாக விவரித்தாய்." },
+                        { level: 3, scores: [9, 10, 11, 12], label: "ஓரளவு கருத்து வளர்ச்சி", desc: "பொருத்தமான கருத்துகளைக் கூறுதல்; ஓரளவு வளர்ச்சி.", feedback: "வழிகாட்டலின் மூலம் கேள்விகளுக்குப் பதிலளித்தாய். அடுத்த முறை நீயாகவே முன்வந்து பேச முயற்சி செய்!" },
+                        { level: 4, scores: [5, 6, 7, 8], label: "வளர்ச்சி இன்மை", desc: "ஓரளவு பொருத்தமான கருத்துகள்; வளர்ச்சி இன்மை.", feedback: "தொடர்ச்சியான கேள்விகள் தேவைப்பட்டன. சுற்றுப்புறத்தை நன்கு அவதானித்து உனது எண்ணங்களைத் தைரியமாகப் பகிரவும்." },
+                        { level: 5, scores: [1, 2, 3, 4], label: "கூற இயலாமை", desc: "பொருத்தமான கருத்துகளைக் கூற இயலாமை.", feedback: "இன்று கருத்துப் பரிமாற்றம் சற்றே கடினமாக இருந்தது. கவலை வேண்டாம், எளிய உரையாடல்களிலிருந்து மெதுவாகத் தொடங்குவோம்." }
+                    ]
+                },
+                convLanguage: {
+                    title: "மொழியும் சரளமும் (20 மதிப்பெண்கள்)",
+                    max: 20,
+                    items: [
+                        { level: 1, scores: [17, 18, 19, 20], label: "பொருத்தமான சொல்லாட்சி", desc: "பொருத்தமான சொல்லாட்சி; மிகச் சரளமான பேச்சு.", feedback: "பொருத்தமான சொற்களைப் பயன்படுத்தி உரையாடல் முழுவதும் மிகத் தெளிவாகவும் சரளமாகவும் பேசினாய். அருமை!" },
+                        { level: 2, scores: [13, 14, 15, 16], label: "பெரும்பாலும் பொருத்தமான சொல்லாட்சி", desc: "பெரும்பாலும் பொருத்தமான சொல்லாட்சி; தெளிவான பேச்சு.", feedback: "பெரும்பாலான நேரங்களில் பொருத்தமான சொற்களைப் பயன்படுத்தித் தெளிவாகவும் சுமுகமாகவும் தொடர்புகொண்டாய்." },
+                        { level: 3, scores: [9, 10, 11, 12], label: "அடிப்படைச் சொற்கள்", desc: "அடிப்படைச் சொற்கள்; ஓரளவு தெளிவான பேச்சு.", feedback: "எளிய வாக்கியங்களில் கருத்துகளை வெளிப்படுத்தினாய். உனது சொற்களஞ்சியத்தை மேலும் வளர்த்துக்கொள்!" },
+                        { level: 4, scores: [5, 6, 7, 8], label: "தயக்கத்துடன் கூடிய பேச்சு", desc: "தயக்கத்துடன் கூடிய பேச்சு; தெளிவற்ற நிலை.", feedback: "சொற்களைத் தேர்ந்தெடுப்பதில் சிரமமும் தயக்கமும் இருந்தது. அதிகப் பேச்சுப் பயிற்சி தன்னம்பிக்கையைத் தரும்!" },
+                        { level: 5, scores: [1, 2, 3, 4], label: "பேச இயலாமை", desc: "பொருத்தமற்ற சொற்கள்; பேச இயலாமை.", feedback: "சொற்களஞ்சியம் குறைவாக இருந்ததால் கருத்துகளைக் கூறுவது சிரமமாக இருந்தது. தொடர்ந்து வாசித்துக் கேட்டால் விரைவாக முன்னேறலாம்!" }
+                    ]
+                }
+            }
+        };
+
+        const examinersList = ['Abitha', 'Mrs Pannir', 'Mumtaz'];
+
+        const defaultRoster = [
+            // Standard Tamil Language (6 Students)
+            { class: 'P5-E', index: '1', name: 'MOHAMED MAHFOOZ S/O MOHAMED KASSALI', mtl: 'TL', subjectType: 'standard' },
+            { class: 'P5-I', index: '1', name: 'HAFSA MARYAM SALIMDEEN OMAR MUKHTHAR', mtl: 'TL', subjectType: 'standard' },
+            { class: 'P5-I', index: '2', name: 'KRISH GOWISH', mtl: 'TL', subjectType: 'standard' },
+            { class: 'P5-I', index: '3', name: 'SHIVASHANKARI KATHIRESAN', mtl: 'TL', subjectType: 'standard' },
+            { class: 'P5-O', index: '1', name: 'ABENI IVA DEVARAJ', mtl: 'TL', subjectType: 'standard' },
+            { class: 'P5-O', index: '2', name: 'NOAH NITHILAN S/O RAGUNATHAN', mtl: 'TL', subjectType: 'standard' },
+
+            // Foundation Tamil Language (2 Students)
+            { class: 'P5-O', index: '1', name: 'MOHAMED ZAYYAN S/O SYED ZUBAIR', mtl: 'FTL', subjectType: 'foundation' },
+            { class: 'P5-O', index: '2', name: 'NOORJAHAN TAAHIRA', mtl: 'FTL', subjectType: 'foundation' }
+        ];
+
+        const App = () => {
+            const [syllabus, setSyllabus] = useState('standard'); 
+            const [student, setStudent] = useState({ class: '', name: '', index: '', mtl: '' });
+            const [scores, setScores] = useState({ readingPron: 0, readingFluency: 0, convResponse: 0, convLanguage: 0 });
+            const [selections, setSelections] = useState({ readingPron: null, readingFluency: null, convResponse: null, convLanguage: null });
+            
+            const [feedbackText, setFeedbackText] = useState('');
+            const lastGeneratedRef = useRef('');
+
+            const gasUrl = 'https://script.google.com/macros/s/AKfycbxwcWj2d1H3zjLEIsYipu31Prft-iV-6lDgQvZPSx-bnBFt_3VbIDz7HLAHxGZAFv_X/exec';
+            const [submitStatus, setSubmitStatus] = useState('idle');
+            const [pdfStatus, setPdfStatus] = useState('');
+            
+            // Set to empty string so examiner dropdown always defaults to "- மதிப்பீட்டாளர் -"
+            const [currentExaminer, setCurrentExaminer] = useState('');
+
+            const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'alert', onConfirm: null, isSuccess: false });
+
+            const [roster, setRoster] = useState(defaultRoster);
+
+            const currentRubrics = rubricsData[syllabus];
+
+            const isFoundation = syllabus === 'foundation';
+            const readingCombined = isFoundation 
+                ? (Number(scores.readingPron) + Number(scores.readingFluency)) / 2 
+                : Number(scores.readingPron) + Number(scores.readingFluency);
+            
+            const convTotal = Number(scores.convResponse) + Number(scores.convLanguage);
+            const grandTotal = readingCombined + convTotal;
+
+            const maxReading = isFoundation ? 15 : 20;
+            const maxConv = isFoundation ? 40 : 30;
+            const maxTotal = isFoundation ? 55 : 50;
+
+            const generateSystemText = () => {
+                let readingParts = [];
+                if (selections.readingPron !== null) readingParts.push(currentRubrics.readingPron.items[selections.readingPron].feedback);
+                if (selections.readingFluency !== null) readingParts.push(currentRubrics.readingFluency.items[selections.readingFluency].feedback);
+                const generatedReadingFeedback = readingParts.join(" ");
+
+                let convParts = [];
+                if (selections.convResponse !== null) convParts.push(currentRubrics.convResponse.items[selections.convResponse].feedback);
+                if (selections.convLanguage !== null) convParts.push(currentRubrics.convLanguage.items[selections.convLanguage].feedback);
+                const generatedConvFeedback = convParts.join(" ");
+
+                let finalParts = [];
+                if (generatedReadingFeedback) finalParts.push(`【வாய்விட்டு வாசித்தல்】\n${generatedReadingFeedback}`);
+                if (generatedConvFeedback) finalParts.push(`【உரையாடல்】\n${generatedConvFeedback}`);
+                
+                return finalParts.join("\n\n");
+            };
+
+            // Smart Merge for Auto Feedback
+            useEffect(() => {
+                const newSystemText = generateSystemText();
+                
+                if (newSystemText !== lastGeneratedRef.current) {
+                    setFeedbackText(prevText => {
+                        if (!prevText.trim()) return newSystemText;
+                        
+                        if (lastGeneratedRef.current && prevText.includes(lastGeneratedRef.current)) {
+                            return prevText.replace(lastGeneratedRef.current, newSystemText);
+                        }
+                        
+                        let extractedCustom = prevText;
+                        Object.values(rubricsData).forEach(rubricSet => {
+                            Object.values(rubricSet).forEach(category => {
+                                category.items.forEach(item => {
+                                    if (item.feedback) {
+                                        extractedCustom = extractedCustom.split(item.feedback).join('');
+                                    }
+                                });
+                            });
+                        });
+
+                        extractedCustom = extractedCustom.split('【வாய்விட்டு வாசித்தல்】').join('');
+                        extractedCustom = extractedCustom.split('【உரையாடல்】').join('');
+                        extractedCustom = extractedCustom.replace(/\n\s*\n/g, '\n').trim();
+                        
+                        return newSystemText + (extractedCustom ? "\n\n" + extractedCustom : "");
+                    });
+                    
+                    lastGeneratedRef.current = newSystemText;
+                }
+            }, [selections, currentRubrics]);
+
+            const handleSyllabusChange = (newSyllabus) => {
+                if (newSyllabus === syllabus) return;
+
+                const hasScores = Object.values(scores).some(val => val > 0);
+                if (hasScores) {
+                    setDialog({
+                        isOpen: true,
+                        title: 'மதிப்பீட்டு நிலையை மாற்றவா?',
+                        message: 'நிலையை மாற்றினால் தற்போதைய மதிப்பெண்களும் பின்னூட்டக் குறிப்புகளும் அழிக்கப்படும். தொடர விரும்புகிறீர்களா?',
+                        type: 'confirm',
+                        onConfirm: () => {
+                            setSyllabus(newSyllabus);
+                            clearScores();
+                            setStudent({ class: '', name: '', index: '', mtl: '' });
+                        }
+                    });
+                } else {
+                    setSyllabus(newSyllabus);
+                    setStudent({ class: '', name: '', index: '', mtl: '' });
+                }
+            };
+
+            const clearScores = () => {
+                setScores({ readingPron: 0, readingFluency: 0, convResponse: 0, convLanguage: 0 });
+                setSelections({ readingPron: null, readingFluency: null, convResponse: null, convLanguage: null });
+                setFeedbackText('');
+                lastGeneratedRef.current = '';
+            };
+
+            const handleSelect = (category, itemIndex, selectedScore) => {
+                setSelections(prev => ({ ...prev, [category]: itemIndex }));
+                setScores(prev => ({ ...prev, [category]: selectedScore }));
+            };
+
+            const handleScoreChange = (category, value) => {
+                let num = parseInt(value) || 0;
+                if (num > currentRubrics[category].max) num = currentRubrics[category].max;
+                setScores(prev => ({ ...prev, [category]: num }));
+                setSelections(prev => ({ ...prev, [category]: null })); 
+            };
+
+            const handleExaminerChange = (e) => {
+                const val = e.target.value;
+                setCurrentExaminer(val);
+                localStorage.setItem('oralExamExaminer', val);
+            };
+
+            const handleSavePDF = async () => {
+                const rawFileName = student.name
+                    ? `${student.class}_${student.name}_வாய்மொழி_மதிப்பீடு.pdf`
+                    : `வாய்மொழி_மதிப்பீடு_${student.class || 'Class'}.pdf`;
+                const fileName = rawFileName.replace(/[\/:*?"<>|]/g, '_');
+
+                const source = document.querySelector('.print-container');
+                if (!source) {
+                    setDialog({ isOpen: true, title: 'சேமிக்க முடியவில்லை', message: 'வாய்மொழி மதிப்பீட்டு அறிக்கை காணப்படவில்லை.', type: 'alert' });
+                    return;
+                }
+
+                if (typeof html2pdf === 'undefined') {
+                    setDialog({ isOpen: true, title: 'PDF செயல்பாடு ஏற்றப்படவில்லை', message: 'PDF உருவாக்கும் கூறு ஏற்றப்படவில்லை. இணைய இணைப்பைச் சரிபார்த்து பக்கத்தைப் புதுப்பித்து மீண்டும் முயற்சிக்கவும்.', type: 'alert' });
+                    return;
+                }
+
+                setPdfStatus('PDF உருவாக்கப்படுகிறது…');
+
+                const staging = document.createElement('div');
+                staging.style.position = 'fixed';
+                staging.style.left = '-100000px';
+                staging.style.top = '0';
+                staging.style.width = '794px';
+                staging.style.background = '#ffffff';
+                staging.style.zIndex = '-9999';
+
+                const clone = source.cloneNode(true);
+                clone.classList.remove('print-only');
+                clone.style.display = 'flex';
+                clone.style.boxSizing = 'border-box';
+                clone.style.width = '100%';
+                clone.style.margin = '0';
+                clone.style.padding = '16px';
+                clone.style.background = '#ffffff';
+                clone.style.border = '2px solid #3b82f6';
+                clone.style.borderRadius = '16px';
+                staging.appendChild(clone);
+                document.body.appendChild(staging);
+
+                try {
+                    const options = {
+                        margin: [8, 8, 8, 8],
+                        filename: fileName,
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                    };
+
+                    await html2pdf().set(options).from(clone).save();
+
+                    setPdfStatus('✓ PDF உருவாக்கப்பட்டது');
+                    setTimeout(() => setPdfStatus(''), 2500);
+                } catch (error) {
+                    setPdfStatus('');
+                    console.error('PDF generation failed:', error);
+                    setDialog({
+                        isOpen: true,
+                        title: 'சேமிப்பு தோல்வியடைந்தது',
+                        message: `PDF உருவாக்க முடியவில்லை. பக்கத்தைப் புதுப்பித்து மீண்டும் முயற்சிக்கவும்.
+
+Technical info: ${error && error.message ? error.message : 'Unknown error'}`,
+                        type: 'alert'
+                    });
+                } finally {
+                    staging.remove();
+                }
+            };
+
+
+            const filteredStudents = useMemo(() => {
+                if (!student.class) return [];
+                return roster.filter(s => s.subjectType === syllabus && s.class === student.class);
+            }, [roster, syllabus, student.class]);
+
+            const availableClasses = useMemo(() => {
+                const classes = new Set(roster.filter(s => s.subjectType === syllabus).map(s => s.class));
+                return Array.from(classes).sort();
+            }, [roster, syllabus]);
+
+            const handleStudentSelect = (e) => {
+                const selectedName = e.target.value;
+                const found = roster.find(s => s.name === selectedName && s.class === student.class && s.subjectType === syllabus);
+                if (found) {
+                    setStudent(found);
+                } else {
+                    setStudent({ ...student, name: selectedName, index: '', mtl: '' });
+                }
+            };
+
+            const handleSubmitGAS = async () => {
+                if (!student.class) {
+                    setDialog({ isOpen: true, title: 'நினைவூட்டல்', message: 'தயவுசெய்து முதலில் வகுப்பைத் தேர்ந்தெடுக்கவும்!', type: 'alert' });
+                    return;
+                }
+                if (!student.name || !currentExaminer) {
+                    setDialog({ isOpen: true, title: 'நினைவூட்டல்', message: 'மாணவரின் பெயரையும் மதிப்பீட்டாளரின் பெயரையும் தேர்ந்தெடுப்பதை உறுதிசெய்யவும்.', type: 'alert' });
+                    return;
+                }
+
+                setSubmitStatus('loading');
+                
+                const payload = {
+                    className: student.class,
+                    indexNo: student.index,
+                    studentName: student.name,
+                    examiner: currentExaminer,
+                    mtl: student.mtl,
+                    syllabus: syllabus === 'standard' ? 'Standard Tamil Language' : 'Foundation Tamil Language',
+                    
+                    readingPronScore: scores.readingPron,       
+                    readingFluencyScore: scores.readingFluency,   
+                    readingCombinedScore: readingCombined,       
+                    
+                    convResponseScore: scores.convResponse,       
+                    convLanguageScore: scores.convLanguage,       
+                    convCombinedScore: convTotal,                 
+                    
+                    totalScore: grandTotal,                       
+                    maxTotal: maxTotal,
+                    feedback: feedbackText,
+                    timestamp: new Date().toLocaleString('en-SG', { hour12: false })
+                };
+
+                try {
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    setSubmitStatus('idle');
+                    setDialog({ 
+                        isOpen: true, 
+                        title: '✅ வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டது!', 
+                        message: `${student.name} மாணவருக்கான மதிப்பெண்களும் பின்னூட்டமும் Cloud-இல் சேமிக்கப்பட்டுள்ளன.`, 
+                        type: 'alert',
+                        isSuccess: true 
+                    });
+                } catch (error) {
+                    setSubmitStatus('idle');
+                    setDialog({ isOpen: true, title: 'சமர்ப்பிக்க முடியவில்லை', message: 'இணையக் கோளாறு அல்லது பிழை. மீண்டும் முயற்சிக்கவும்.', type: 'alert' });
+                }
+            };
+
+            const resetForm = () => {
+                setDialog({
+                    isOpen: true,
+                    title: 'படிவத்தை அழிக்கவா?',
+                    message: 'அடுத்த மாணவரை மதிப்பிட இந்தப் படிவத்தின் தற்போதைய மதிப்பெண்களை அழிக்க விரும்புகிறீர்களா?',
+                    type: 'confirm',
+                    onConfirm: () => {
+                        setStudent(prev => ({ ...prev, name: '', index: '', mtl: '' }));
+                        clearScores();
+                    }
+                });
+            }
+
+            const renderRubricRow = (categoryKey, rubricObj) => (
+                <div className="mb-10 bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h3 className="font-bold text-xl md:text-2xl text-slate-800">
+                            {rubricObj.title}
+                        </h3>
+                        <div className="flex items-center space-x-3 bg-blue-50 px-4 py-2 rounded-xl border border-blue-200 w-full md:w-auto justify-between md:justify-start">
+                            <span className="text-base md:text-lg text-blue-900 font-bold">மதிப்பெண்:</span>
+                            <div className="flex items-baseline">
+                                <input 
+                                    type="number" 
+                                    min="0" max={rubricObj.max}
+                                    value={scores[categoryKey]} 
+                                    onChange={(e) => handleScoreChange(categoryKey, e.target.value)}
+                                    className="w-16 text-center font-black text-2xl text-blue-700 bg-transparent border-b-2 border-blue-300 focus:outline-none focus:border-blue-700 transition-colors"
+                                />
+                                <span className="text-slate-500 font-medium ml-1">/{rubricObj.max}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {rubricObj.items.map((item, index) => {
+                            const isSelected = selections[categoryKey] === index;
+                            return (
+                                <div 
+                                    key={index}
+                                    onClick={() => handleSelect(categoryKey, index, item.scores[item.scores.length - 1])}
+                                    className={`cursor-pointer rounded-xl p-4 transition-all duration-200 border-2 flex flex-col ${
+                                        isSelected 
+                                        ? 'border-blue-600 bg-blue-50 shadow-md ring-4 ring-blue-100 scale-[1.02]' 
+                                        : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {item.scores.map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelect(categoryKey, index, s);
+                                                }}
+                                                className={`w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center text-sm md:text-base font-black transition-all ${
+                                                    isSelected && scores[categoryKey] === s 
+                                                    ? 'bg-blue-600 text-white shadow-lg scale-110' 
+                                                    : 'bg-white border-2 border-slate-300 text-slate-600 hover:bg-blue-100 hover:text-blue-800 hover:border-purple-400'
+                                                }`}
+                                            >
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className={`font-bold text-lg mb-2 ${isSelected ? 'text-blue-800' : 'text-slate-700'}`}>
+                                        {item.label}
+                                    </div>
+                                    <div className={`text-sm leading-relaxed flex-grow ${isSelected ? 'text-blue-900/80 font-medium' : 'text-slate-500'}`}>
+                                        {item.desc}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+                    
+                    {/* Modal Dialogs */}
+                    {dialog.isOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 no-print">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all border border-slate-200">
+                                <div className={`p-10 ${dialog.isSuccess ? 'bg-green-50 text-center' : ''}`}>
+                                    {dialog.isSuccess && <div className="text-7xl mb-6">🎉</div>}
+                                    <h3 className={`font-black text-3xl mb-4 ${dialog.isSuccess ? 'text-green-800' : 'text-slate-900'}`}>
+                                        {dialog.title || 'அறிவிப்பு'}
+                                    </h3>
+                                    <p className={`leading-relaxed text-xl ${dialog.isSuccess ? 'text-green-900 font-medium' : 'text-slate-600'}`}>
+                                        {dialog.message}
+                                    </p>
+                                </div>
+                                <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-center space-x-4">
+                                    {dialog.type === 'confirm' && (
+                                        <button 
+                                            onClick={() => setDialog({ ...dialog, isOpen: false })} 
+                                            className="px-8 py-4 text-slate-600 font-bold text-lg hover:bg-slate-200 rounded-xl transition-colors w-full"
+                                        >
+                                            ரத்து செய்
+                                        </button>
+                                    )}
+                                    <button 
+                                        onClick={() => { 
+                                            if(dialog.onConfirm) dialog.onConfirm(); 
+                                            setDialog({ ...dialog, isOpen: false, isSuccess: false }); 
+                                        }} 
+                                        className={`px-8 py-4 text-white font-black text-lg rounded-xl shadow-lg transition-colors w-full ${dialog.isSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                    >
+                                        சரி
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Top Navigation & Info Bar */}
+                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl shadow-md border-b border-slate-200 rounded-b-3xl p-4 lg:p-5 mb-8 flex flex-col xl:flex-row justify-between items-start xl:items-center no-print gap-4 transition-all">
+                        
+                        <div className="flex flex-col space-y-4 w-full xl:w-auto">
+                            {/* App Title and Actions */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                <span className="text-2xl font-black bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent drop-shadow-sm whitespace-nowrap">Alexandra வாய்மொழி மதிப்பீடு – தொடக்கநிலை 5 (2026)</span>
+                                
+                                {/* Syllabus Toggle */}
+                                <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                                    <button
+                                        onClick={() => handleSyllabusChange('standard')}
+                                        className={`px-4 py-1.5 rounded-lg font-bold text-sm transition-all ${syllabus === 'standard' ? 'bg-slate-100 text-blue-700 shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        சாதாரண (Standard)
+                                    </button>
+                                    <button
+                                        onClick={() => handleSyllabusChange('foundation')}
+                                        className={`px-4 py-1.5 rounded-lg font-bold text-sm transition-all ${syllabus === 'foundation' ? 'bg-slate-100 text-emerald-700 shadow-inner' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        அடிப்படை (Foundation)
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Student Selection */}
+                            <div className="flex flex-wrap items-center gap-3">
+                                <select 
+                                    value={student.class} 
+                                    onChange={e => setStudent({ class: e.target.value, name: '', index: '', mtl: '' })}
+                                    className="border-2 border-slate-200 rounded-xl px-3 py-2 bg-white focus:ring-4 focus:ring-blue-500/20 outline-none font-bold text-slate-800 cursor-pointer shadow-sm"
+                                >
+                                    <option value="">- வகுப்பு -</option>
+                                    {availableClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                
+                                <select 
+                                    value={student.name} 
+                                    onChange={handleStudentSelect}
+                                    disabled={!student.class}
+                                    className="w-40 md:w-64 border-2 border-slate-200 rounded-xl px-3 py-2 bg-white focus:ring-4 focus:ring-blue-500/20 outline-none font-bold text-blue-700 shadow-sm cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                >
+                                    <option value="">- மாணவர் பெயர் -</option>
+                                    {filteredStudents.map((s, i) => <option key={i} value={s.name}>{s.name}</option>)}
+                                </select>
+
+                                <div className="flex items-center space-x-2 md:border-l-2 md:border-slate-200 md:pl-4">
+                                    <select 
+                                        value={currentExaminer}
+                                        onChange={handleExaminerChange}
+                                        className="border-2 border-purple-200 rounded-xl px-3 py-2 bg-purple-50 focus:ring-4 focus:ring-purple-500/20 outline-none font-bold text-purple-800 shadow-sm cursor-pointer"
+                                    >
+                                        <option value="">- மதிப்பீட்டாளர் -</option>
+                                        {examinersList.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                
+                                {student.mtl && (
+                                    <span className="bg-white text-slate-600 text-xs px-2 py-1 rounded-md border border-slate-200 font-bold shadow-sm">
+                                        MTL: {student.mtl}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Live Score Summary */}
+                        <div className="flex items-center justify-end space-x-4 md:space-x-6 w-full xl:w-auto bg-white/50 xl:bg-transparent p-3 xl:p-0 rounded-2xl xl:rounded-none">
+                            <div className="text-center">
+                                <div className="text-xs text-slate-500 font-bold mb-1">வாசித்தல் Subtotal</div>
+                                <div className="font-black text-xl text-indigo-600">{readingCombined}<span className="text-sm text-slate-400 font-medium">/{maxReading}</span></div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-xs text-slate-500 font-bold mb-1">உரையாடல் Subtotal</div>
+                                <div className="font-black text-xl text-indigo-600">{convTotal}<span className="text-sm text-slate-400 font-medium">/{maxConv}</span></div>
+                            </div>
+                            <div className={`text-center px-6 py-2 rounded-2xl shadow-md transition-colors ${syllabus === 'foundation' ? 'bg-emerald-600' : 'bg-blue-600'} text-white`}>
+                                <div className="text-xs font-bold opacity-90 mb-1">மொத்த மதிப்பெண்</div>
+                                <div className="font-black text-3xl leading-none">{grandTotal}<span className="text-sm font-medium opacity-80 ml-1">/{maxTotal}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Print Only View */}
+                    <div className="print-only print-container">
+                        <div>
+                            <div className="text-center mb-4 border-b-2 border-slate-200 pb-4">
+                                <h1 className="text-2xl font-black text-slate-900 mb-1 tracking-wide">🌟 Alexandra வாய்மொழி மதிப்பீடு – தொடக்கநிலை 5 (2026) 🌟</h1>
+                                <p className="text-slate-500 mb-2 text-base">({syllabus === 'standard' ? 'சாதாரண (Standard) நிலை' : 'அடிப்படை (Foundation) நிலை'})</p>
+                                <div className="flex justify-center flex-wrap gap-6 text-base text-slate-700 font-medium">
+                                    <span>வகுப்பு: <strong className="text-slate-900 font-black">{student.class || "-"}</strong></span>
+                                    <span>பெயர்: <strong className="text-slate-900 font-black">{student.name || "பெயர் இல்லை"}</strong></span>
+                                </div>
+                            </div>
+                            
+                            <div className="flex justify-center items-center gap-4 mb-4">
+                                <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 w-32 text-center">
+                                    <div className="text-slate-600 font-bold text-xs mb-1">வாசித்தல்</div>
+                                    <div className="text-xl font-black text-slate-800">{readingCombined} <span className="text-sm font-normal text-slate-400">/ {maxReading}</span></div>
+                                </div>
+                                <div className="text-xl text-slate-300 font-light">+</div>
+                                <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 w-32 text-center">
+                                    <div className="text-slate-600 font-bold text-xs mb-1">உரையாடல்</div>
+                                    <div className="text-xl font-black text-slate-800">{convTotal} <span className="text-sm font-normal text-slate-400">/ {maxConv}</span></div>
+                                </div>
+                                <div className="text-xl text-slate-300 font-light">=</div>
+                                <div className={`border-4 rounded-2xl p-4 w-36 text-center shadow-sm ${syllabus === 'foundation' ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}>
+                                    <div className={`font-bold text-xs mb-1 ${syllabus === 'foundation' ? 'text-emerald-700' : 'text-blue-700'}`}>மொத்த மதிப்பெண்</div>
+                                    <div className={`text-3xl font-black ${syllabus === 'foundation' ? 'text-emerald-800' : 'text-blue-800'}`}>{grandTotal} <span className={`text-base ${syllabus === 'foundation' ? 'text-emerald-400' : 'text-blue-400'}`}>/ {maxTotal}</span></div>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <h2 className="text-lg font-black text-slate-900 mb-2 flex items-center">
+                                    <span className={`w-7 h-7 rounded-full flex items-center justify-center mr-2 text-base ${syllabus === 'foundation' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>💡</span> 
+                                    ஆசிரியர் குறிப்பு / பின்னூட்டம்:
+                                </h2>
+                                <div className="bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-base text-slate-800 leading-normal font-medium text-justify whitespace-pre-wrap">
+                                    {feedbackText || "ஆசிரியர் இன்னும் மதிப்பீட்டை முடிக்கவில்லை."}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="text-center pt-2 pb-2 text-slate-500 font-black text-base tracking-widest border-t border-slate-100">
+                            தொடர்ந்து முயற்சி செய்! உனது வெற்றியைக் காண ஆவலுடன் காத்திருக்கிறோம்! 🚀
+                        </div>
+                    </div>
+
+                    {/* Interactive Rubrics Area */}
+                    <div className="no-print">
+                        <div className="mb-12">
+                            <h2 className={`text-2xl font-black text-slate-800 mb-6 px-4 border-l-8 rounded-sm ${syllabus === 'foundation' ? 'border-emerald-500' : 'border-blue-600'}`}>
+                                பகுதி 1: வாய்விட்டு வாசித்தல் ({isFoundation ? '15 மதிப்பெண்கள் [(உச்சரிப்பு + சரளம்) ÷ 2]' : '20 மதிப்பெண்கள்'})
+                            </h2>
+                            {renderRubricRow('readingPron', currentRubrics.readingPron)}
+                            {renderRubricRow('readingFluency', currentRubrics.readingFluency)}
+                        </div>
+
+                        <div className="mb-12">
+                            <h2 className={`text-2xl font-black text-slate-800 mb-6 px-4 border-l-8 rounded-sm ${syllabus === 'foundation' ? 'border-emerald-500' : 'border-green-500'}`}>
+                                பகுதி 2: உரையாடல் ({maxConv} மதிப்பெண்கள்)
+                            </h2>
+                            {renderRubricRow('convResponse', currentRubrics.convResponse)}
+                            {renderRubricRow('convLanguage', currentRubrics.convLanguage)}
+                        </div>
+
+                        {/* Feedback Editor Area */}
+                        <div className={`mt-12 p-6 md:p-8 rounded-3xl border-2 shadow-sm ${syllabus === 'foundation' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-blue-50/50 border-blue-100'}`}>
+                            <h3 className={`font-black text-xl md:text-2xl mb-4 flex items-center ${syllabus === 'foundation' ? 'text-emerald-900' : 'text-blue-900'}`}>
+                                📝 பின்னூட்டம் 
+                                <span className={`text-sm font-normal ml-3 px-3 py-1 rounded-full ${syllabus === 'foundation' ? 'text-emerald-600 bg-emerald-100' : 'text-blue-600 bg-blue-100'}`}>
+                                    (முழுமையாக மாற்றக்கூடியது)
+                                </span>
+                            </h3>
+                            <textarea 
+                                className={`w-full h-48 md:h-64 p-6 rounded-2xl border-2 focus:ring-4 outline-none resize-none text-slate-800 text-lg leading-relaxed text-justify shadow-inner bg-white ${syllabus === 'foundation' ? 'border-emerald-200 focus:ring-emerald-500/20 focus:border-emerald-500' : 'border-blue-200 focus:ring-blue-500/20 focus:border-blue-500'}`}
+                                value={feedbackText}
+                                onChange={(e) => setFeedbackText(e.target.value)}
+                                placeholder="மதிப்பெண்களைத் தேர்ந்தெடுக்கும் போது பின்னூட்டம் இங்கு தானாகவே உருவாகும். உங்கள் குறிப்புகளை இங்கு நேரடியாகத் தட்டச்சு செய்யலாம்."
+                            ></textarea>
+                            
+                            <div className="flex flex-col md:flex-row justify-between items-center mt-8 gap-4 pt-6 border-t border-slate-200/60">
+                                <button 
+                                    onClick={resetForm} 
+                                    className="flex items-center text-slate-600 bg-white hover:bg-slate-100 border-2 border-slate-200 font-bold text-base px-6 py-3 rounded-xl transition-all order-2 md:order-1 shadow-sm"
+                                >
+                                    🔄 படிவத்தை அழி 
+                                </button>
+                                
+                                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto order-1 md:order-2">
+                                    <button 
+                                        onClick={handleSavePDF}
+                                        className="justify-center bg-white border-2 border-slate-300 hover:border-slate-400 text-slate-800 px-6 py-3 rounded-xl font-bold text-base shadow-sm flex items-center transition-all"
+                                    >
+                                        💾 PDF சேமி
+                                    </button>
+                                    {pdfStatus && <span className="text-sm font-bold text-green-700 self-center">{pdfStatus}</span>}
+                                    <button 
+                                        onClick={handleSubmitGAS}
+                                        disabled={submitStatus === 'loading'}
+                                        className={`justify-center text-white px-8 py-3 rounded-xl font-bold text-base shadow-md flex items-center transition-all transform hover:-translate-y-0.5 ${
+                                            submitStatus === 'loading' 
+                                            ? 'bg-indigo-400' 
+                                            : (syllabus === 'foundation' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700')
+                                        }`}
+                                    >
+                                        {submitStatus === 'loading' ? '☁️ அனுப்புகிறது...' : '☁️ Cloud-இல் சேமி'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
