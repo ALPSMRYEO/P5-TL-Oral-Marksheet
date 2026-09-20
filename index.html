@@ -427,58 +427,137 @@
                 }
             };
 
+            const buildPayload = () => ({
+                level: 'P5',
+                className: student.class,
+                indexNo: student.index,
+                studentName: student.name,
+                examiner: currentExaminer,
+                mtl: student.mtl,
+                syllabus: syllabus === 'standard' ? 'Tamil Language' : 'Foundation Tamil Language',
+
+                readingPronScore: scores.readingPron,
+                readingFluencyScore: scores.readingFluency,
+                readingCombinedScore: readingCombined,
+
+                convResponseScore: scores.convResponse,
+                convLanguageScore: scores.convLanguage,
+                convCombinedScore: convTotal,
+
+                totalScore: grandTotal,
+                maxTotal: maxTotal,
+                feedback: feedbackText,
+                timestamp: new Date().toLocaleString('en-SG', { hour12: false })
+            });
+
+            const submitAssessment = async () => {
+                setSubmitStatus('loading');
+                try {
+                    await fetch(gasUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(buildPayload())
+                    });
+
+                    const key = `P5|${student.mtl}|${student.name}`.toUpperCase();
+                    localStorage.setItem(`oralSubmitted:${key}`, JSON.stringify({
+                        examiner: currentExaminer,
+                        timestamp: new Date().toLocaleString('en-SG', { hour12: false })
+                    }));
+
+                    setSubmitStatus('idle');
+                    setDialog({
+                        isOpen: true,
+                        title: '✅ சமர்ப்பிக்கப்பட்டது!',
+                        message: `${student.name} மாணவரின் மதிப்பெண்கள் வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டன.`,
+                        type: 'alert',
+                        isSuccess: true
+                    });
+                } catch (error) {
+                    setSubmitStatus('idle');
+                    setDialog({
+                        isOpen: true,
+                        title: 'சமர்ப்பிக்க முடியவில்லை',
+                        message: 'இணைய இணைப்பில் சிக்கல் ஏற்பட்டது. மீண்டும் முயற்சி செய்யவும்.',
+                        type: 'alert'
+                    });
+                }
+            };
+
+            const showDuplicateWarning = (previous) => {
+                const details = previous
+                    ? `\nமுந்தைய மதிப்பீட்டாளர்: ${previous.examiner || 'பதிவு இல்லை'}\nமுந்தைய சமர்ப்பிப்பு: ${previous.timestamp || 'பதிவு இல்லை'}`
+                    : '';
+
+                setDialog({
+                    isOpen: true,
+                    title: '⚠️ மதிப்பெண்கள் ஏற்கனவே சமர்ப்பிக்கப்பட்டுள்ளன',
+                    message: `${student.name} மாணவரின் மதிப்பெண்கள் ஏற்கனவே சமர்ப்பிக்கப்பட்டுள்ளன.${details}\n\nரத்து செய்ய “ரத்து” என்பதைத் தேர்ந்தெடுக்கவும்; மீண்டும் சமர்ப்பிக்க “தொடரவும்” என்பதைத் தேர்ந்தெடுக்கவும்.`,
+                    type: 'confirm',
+                    onConfirm: () => {
+                        setDialog(d => ({ ...d, isOpen: false }));
+                        submitAssessment();
+                    }
+                });
+            };
+
             const handleSubmitGAS = async () => {
-                if (!student.class) {
-                    setDialog({ isOpen: true, title: 'நினைவூட்டல்', message: 'தயவுசெய்து முதலில் வகுப்பைத் தேர்ந்தெடுக்கவும்!', type: 'alert' });
+                if (!student.name || !student.mtl || !currentExaminer) {
+                    setDialog({
+                        isOpen: true,
+                        title: 'கவனம்',
+                        message: 'மாணவர் மற்றும் மதிப்பீட்டாளர் விவரங்கள் தேர்ந்தெடுக்கப்பட்டுள்ளதா என்பதைச் சரிபார்க்கவும்.',
+                        type: 'alert'
+                    });
                     return;
                 }
-                if (!student.name || !currentExaminer) {
-                    setDialog({ isOpen: true, title: 'நினைவூட்டல்', message: 'மாணவரின் பெயரையும் மதிப்பீட்டாளரின் பெயரையும் தேர்ந்தெடுப்பதை உறுதிசெய்யவும்.', type: 'alert' });
+
+                if (submitStatus === 'loading') return;
+
+                const key = `P5|${student.mtl}|${student.name}`.toUpperCase();
+                const localPrevious = localStorage.getItem(`oralSubmitted:${key}`);
+
+                // Same-device safeguard: catches an accidental second press of Submit.
+                if (localPrevious) {
+                    let previous = null;
+                    try { previous = JSON.parse(localPrevious); } catch (e) {}
+                    showDuplicateWarning(previous);
                     return;
                 }
 
                 setSubmitStatus('loading');
-                
-                const payload = {
-                    className: student.class,
-                    indexNo: student.index,
-                    studentName: student.name,
-                    examiner: currentExaminer,
-                    mtl: student.mtl,
-                    syllabus: syllabus === 'standard' ? 'Standard Tamil Language' : 'Foundation Tamil Language',
-                    
-                    readingPronScore: scores.readingPron,       
-                    readingFluencyScore: scores.readingFluency,   
-                    readingCombinedScore: readingCombined,       
-                    
-                    convResponseScore: scores.convResponse,       
-                    convLanguageScore: scores.convLanguage,       
-                    convCombinedScore: convTotal,                 
-                    
-                    totalScore: grandTotal,                       
-                    maxTotal: maxTotal,
-                    feedback: feedbackText,
-                    timestamp: new Date().toLocaleString('en-SG', { hour12: false })
-                };
 
+                // Google Sheet safeguard: catches the same student submitted
+                // by another examiner or from another device.
                 try {
-                    const response = await fetch(gasUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify(payload)
+                    const checkUrl =
+                        `${gasUrl}?action=check&level=P5&mtClass=${encodeURIComponent(student.mtl)}` +
+                        `&studentName=${encodeURIComponent(student.name)}&_=${Date.now()}`;
+
+                    const response = await fetch(checkUrl, {
+                        method: 'GET',
+                        cache: 'no-store',
+                        redirect: 'follow'
                     });
-                    
+                    const result = await response.json();
+
                     setSubmitStatus('idle');
-                    setDialog({ 
-                        isOpen: true, 
-                        title: '✅ வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டது!', 
-                        message: `${student.name} மாணவருக்கான மதிப்பெண்களும் பின்னூட்டமும் Cloud-இல் சேமிக்கப்பட்டுள்ளன.`, 
-                        type: 'alert',
-                        isSuccess: true 
-                    });
+
+                    if (result && result.exists) {
+                        showDuplicateWarning(result.previous || null);
+                        return;
+                    }
+
+                    await submitAssessment();
                 } catch (error) {
                     setSubmitStatus('idle');
-                    setDialog({ isOpen: true, title: 'சமர்ப்பிக்க முடியவில்லை', message: 'இணையக் கோளாறு அல்லது பிழை. மீண்டும் முயற்சிக்கவும்.', type: 'alert' });
+                    setDialog({
+                        isOpen: true,
+                        title: 'முந்தைய சமர்ப்பிப்பைச் சரிபார்க்க முடியவில்லை',
+                        message: 'Google Sheet-இல் இந்த மாணவரின் மதிப்பெண்கள் ஏற்கனவே உள்ளதா என்பதை இப்போது சரிபார்க்க முடியவில்லை. நகல் பதிவைத் தவிர்க்க, இந்த முறை மதிப்பெண்கள் சமர்ப்பிக்கப்படவில்லை. இணைய இணைப்பு அல்லது Apps Script deployment-ஐச் சரிபார்த்து மீண்டும் முயற்சி செய்யவும்.',
+                        type: 'alert'
+                    });
                 }
             };
 
