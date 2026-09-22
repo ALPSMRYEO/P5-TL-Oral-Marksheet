@@ -450,27 +450,43 @@
                 timestamp: new Date().toLocaleString('en-SG', { hour12: false })
             });
 
-            const submitAssessment = async () => {
+            const submitAssessment = async (forceDuplicate = false) => {
                 setSubmitStatus('loading');
+
                 try {
-                    await fetch(gasUrl, {
+                    const payload = {
+                        ...buildPayload(),
+                        forceDuplicate
+                    };
+
+                    const response = await fetch(gasUrl, {
                         method: 'POST',
-                        mode: 'no-cors',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify(buildPayload())
+                        body: JSON.stringify(payload)
                     });
+
+                    const result = await response.json();
+                    setSubmitStatus('idle');
+
+                    if (result && result.duplicate && result.saved === false) {
+                        showDuplicateWarning(result.previous || null);
+                        return;
+                    }
+
+                    if (!result || result.ok !== true || result.saved !== true) {
+                        throw new Error((result && result.error) || 'Submission was not confirmed.');
+                    }
 
                     const key = `P5|${student.mtl}|${student.name}`.toUpperCase();
                     localStorage.setItem(`oralSubmitted:${key}`, JSON.stringify({
                         examiner: currentExaminer,
-                        timestamp: new Date().toLocaleString('en-SG', { hour12: false })
+                        timestamp: new Date().toLocaleString('zh-CN', { hour12: false })
                     }));
 
-                    setSubmitStatus('idle');
                     setDialog({
                         isOpen: true,
-                        title: '✅ சமர்ப்பிக்கப்பட்டது!',
-                        message: `${student.name} மாணவரின் மதிப்பெண்கள் வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டன.`,
+                        title: '✅ சமர்ப்பிப்பு வெற்றி!',
+                        message: `${student.name} மாணவரின் மதிப்பெண்கள் மேகத்தில் சேமிக்கப்பட்டன.`,
                         type: 'alert',
                         isSuccess: true
                     });
@@ -479,7 +495,7 @@
                     setDialog({
                         isOpen: true,
                         title: 'சமர்ப்பிக்க முடியவில்லை',
-                        message: 'இணைய இணைப்பில் சிக்கல் ஏற்பட்டது. மீண்டும் முயற்சி செய்யவும்.',
+                        message: 'மதிப்பெண்கள் சேமிக்கப்பட்டதா என்பதை உறுதிப்படுத்த முடியவில்லை. இணைய இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.',
                         type: 'alert'
                     });
                 }
@@ -497,7 +513,7 @@
                     type: 'confirm',
                     onConfirm: () => {
                         setDialog(d => ({ ...d, isOpen: false }));
-                        submitAssessment();
+                        submitAssessment(true);
                     }
                 });
             };
@@ -552,12 +568,7 @@
                     await submitAssessment();
                 } catch (error) {
                     setSubmitStatus('idle');
-                    setDialog({
-                        isOpen: true,
-                        title: 'முந்தைய சமர்ப்பிப்பைச் சரிபார்க்க முடியவில்லை',
-                        message: 'Google Sheet-இல் இந்த மாணவரின் மதிப்பெண்கள் ஏற்கனவே உள்ளதா என்பதை இப்போது சரிபார்க்க முடியவில்லை. நகல் பதிவைத் தவிர்க்க, இந்த முறை மதிப்பெண்கள் சமர்ப்பிக்கப்படவில்லை. இணைய இணைப்பு அல்லது Apps Script deployment-ஐச் சரிபார்த்து மீண்டும் முயற்சி செய்யவும்.',
-                        type: 'alert'
-                    });
+                    await submitAssessment(false);
                 }
             };
 
